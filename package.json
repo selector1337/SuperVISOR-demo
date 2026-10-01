@@ -1,0 +1,28 @@
+{
+  "name": "supervisor-demo",
+  "version": "1.2.6-demo.1",
+  "description": "SuperVISOR Demo: ambientes isolados com teste de 7 dias, sem integrações.",
+  "main": "src/gateway.js",
+  "type": "commonjs",
+  "scripts": {
+    "browser:install": "puppeteer browsers install chrome",
+    "postinstall": "npm run browser:install",
+    "start": "node src/gateway.js",
+    "dev": "node src/gateway.js",
+    "client": "node scripts/clients.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "pm2:start": "pm2 startOrReload ecosystem.config.cjs --update-env"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "ffmpeg-static": "^5.3.0",
+    "mongodb": "^6.12.0",
+    "puppeteer": "^23.11.1",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1",
+    "whatsapp-web.js": "^1.25.0"
+  }
+}
