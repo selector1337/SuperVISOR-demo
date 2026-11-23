@@ -88,7 +88,7 @@ function createGateway({ workerPath = path.join(__dirname, 'server.js') } = {}) 
         return res.end();
       }
       const client = cookieClient(req);
-      if (!client) return errorResponse(req, res, 401, 'Teste o SuperVISOR por 7 dias. Acesse usando o convite enviado pela UM Software e suas credenciais.');
+      if (!client) return errorResponse(req, res, 401, 'Conheça o SuperVISOR. Acesse usando o convite enviado pela UM Software e suas credenciais.');
       if (trial.expired(client)) return errorResponse(req, res, 403, 'Seu período de demonstração terminou. Entre em contato com a UM Software para contratar o SuperVISOR.');
       if (req.url.split('?')[0] === '/api/login' && req.method === 'POST') {
         const key = `${client.id}:${req.headers['x-real-ip'] || req.socket.remoteAddress}`;

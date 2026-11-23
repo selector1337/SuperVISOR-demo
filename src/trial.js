@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const DAYS = 7;
+const DEFAULT_DAYS = 7;
 const registry = path.resolve(process.env.DEMO_DATA_DIR || path.join(__dirname, '..', 'instances'));
 
 function clientDir(id) {
@@ -21,20 +21,42 @@ function expired(trial, now = Date.now()) {
 function active(trial = read()) {
   return Boolean(trial.startedAt && !expired(trial));
 }
+function durationDays(trial) {
+  return trial.days === undefined ? DEFAULT_DAYS : trial.days;
+}
+function parseDuration(args, allowDefault = false) {
+  if (!args.length && allowDefault) return DEFAULT_DAYS;
+  if (args.length === 1 && args[0] === '--unlimited') return null;
+  if (args.length === 2 && args[0] === '--days' && /^\d+$/.test(args[1])) {
+    const days = Number(args[1]);
+    if (days >= 1 && days <= 3650) return days;
+  }
+  throw new Error('Informe --days 21 (1 a 3650 dias) ou --unlimited.');
+}
+function setDuration(id, days) {
+  const info = read(id);
+  info.days = days;
+  info.expiresAt = info.startedAt && days !== null
+    ? new Date(Date.parse(info.startedAt) + days * 86400000).toISOString()
+    : null;
+  save(info);
+  return info;
+}
 function start(id = process.env.DEMO_CLIENT_ID) {
   const trial = read(id);
   if (expired(trial)) throw Object.assign(new Error('Seu período de demonstração terminou.'), { status: 403 });
   if (!trial.startedAt) {
     trial.startedAt = new Date().toISOString();
-    trial.expiresAt = new Date(Date.parse(trial.startedAt) + DAYS * 86400000).toISOString();
+    const days = durationDays(trial);
+    trial.expiresAt = days === null ? null : new Date(Date.parse(trial.startedAt) + days * 86400000).toISOString();
     save(trial);
   }
   return trial;
 }
 function publicTrial(trial = read()) {
-  return { id: trial.id, name: trial.name, days: DAYS, startedAt: trial.startedAt, expiresAt: trial.expiresAt, expired: expired(trial) };
+  return { id: trial.id, name: trial.name, days: durationDays(trial), startedAt: trial.startedAt, expiresAt: trial.expiresAt, expired: expired(trial) };
 }
 function requireActive() {
   if (!active()) throw Object.assign(new Error('Demonstração inativa ou encerrada.'), { status: 403 });
 }
-module.exports = { registry, clientDir, read, save, expired, active, start, publicTrial, requireActive };
+module.exports = { registry, clientDir, read, save, expired, active, start, publicTrial, requireActive, durationDays, parseDuration, setDuration };

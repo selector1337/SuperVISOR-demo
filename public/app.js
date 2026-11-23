@@ -73,11 +73,11 @@ let state = {
 
 const changelog = [
   {
-    version: '1.2.6-demo.1',
-    title: 'Demonstração de 7 dias',
+    version: '1.2.6-demo.2',
+    title: 'Demonstração com prazo por empresa',
     items: [
       'Acesso por convite com ambiente e WhatsApp próprios para cada empresa.',
-      'Prazo de 7 dias a partir do primeiro login válido, exibido no painel.',
+      'Prazo definido por empresa ou acesso sem expiração, exibido no painel.',
       'Bloqueio do acesso e interrupção das automações ao término do teste.'
     ]
   },
@@ -372,12 +372,12 @@ function renderAuth() {
       <div class="auth-brand">
         <div class="logo-mark">✓</div>
         ${logoMarkup('large')}
-        <span>Demo • 7 dias para testar</span>
+        <span>Demo • ${state.trial?.days === null ? 'sem expiração' : (state.trial?.days ?? 7) + ' dias para testar'}</span>
       </div>
       <form class="auth-panel form" id="authForm">
         <div>
           <h1>${isSetup ? 'Criar administrador' : 'Entrar na sua conta'}</h1>
-          <p class="muted">${isSetup ? 'Configure o primeiro acesso do painel.' : 'Entre com as credenciais do convite. Seu teste de 7 dias começa no primeiro login.'}</p>
+          <p class="muted">${isSetup ? 'Configure o primeiro acesso do painel.' : state.trial?.days === null ? 'Entre com as credenciais do convite. Este ambiente não possui data de expiração.' : 'Entre com as credenciais do convite. Seu teste de ' + (state.trial?.days ?? 7) + ' dias começa no primeiro login.'}</p>
         </div>
         ${isSetup ? '<label>Nome<input name="name" required minlength="2" autocomplete="name"></label>' : ''}
         <label>E-mail<input name="email" type="text" inputmode="email" required autocomplete="email" placeholder="seu@email.com"></label>
@@ -765,6 +765,9 @@ function fileToDataUrl(file) {
 
 function updateLiveClock() {
   const banner = document.querySelector('#demoBanner');
+  if (banner && state.trial?.days === null) {
+    banner.textContent = 'Demo • sem prazo de expiração';
+  }
   if (banner && state.trial?.expiresAt) {
     const remaining = Date.parse(state.trial.expiresAt) - Date.now();
     if (remaining <= 0) { socket.disconnect(); location.reload(); return; }

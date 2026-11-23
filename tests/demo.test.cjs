@@ -32,14 +32,48 @@ test('prazo é exatamente 7 dias e expira no limite, sem renovar por login', () 
   assert.throws(() => trial.clientDir('../escape'), /inválido/);
 });
 
+test('21 dias e sem expiração persistem; alteração preserva início e revogação', () => {
+  for (const [id, days] of [['twenty-one', 21], ['unlimited', null]]) {
+    fs.mkdirSync(trial.clientDir(id));
+    trial.save({ id, days, startedAt: null, expiresAt: null });
+    const info = trial.start(id);
+    assert.equal(trial.publicTrial(info).days, days);
+    assert.deepEqual(trial.start(id), info);
+    if (days === null) {
+      assert.equal(info.expiresAt, null);
+      assert.equal(trial.expired(info, Date.now() + 100 * 365 * 86400000), false);
+    } else {
+      assert.equal(Date.parse(info.expiresAt) - Date.parse(info.startedAt), 21 * 86400000);
+      assert.equal(trial.expired(info, Date.parse(info.expiresAt)), true);
+    }
+  }
+  const start = trial.read('twenty-one').startedAt;
+  execFileSync(process.execPath, [path.join(__dirname, '../scripts/clients.cjs'), 'set-duration', 'twenty-one', '--unlimited'], { env: process.env });
+  assert.equal(trial.read('twenty-one').expiresAt, null);
+  assert.equal(trial.read('twenty-one').startedAt, start);
+  const info = trial.setDuration('twenty-one', 21);
+  assert.equal(info.startedAt, start);
+  assert.equal(Date.parse(info.expiresAt) - Date.parse(start), 21 * 86400000);
+  const revoked = trial.read('unlimited');
+  revoked.revokedAt = new Date().toISOString();
+  trial.save(revoked);
+  assert.equal(trial.expired(trial.setDuration('unlimited', 21)), true);
+  assert.equal(trial.parseDuration([], true), 7);
+  assert.equal(trial.parseDuration(['--days', '21']), 21);
+  assert.equal(trial.parseDuration(['--unlimited']), null);
+  for (const args of [[], ['--days', '0'], ['--days', '-1'], ['--days', 'abc'], ['--days', '21', '--unlimited']]) {
+    assert.throws(() => trial.parseDuration(args), /Informe/);
+  }
+});
+
 test('gateway real: convites, login, isolamento, sockets, expiração e revogação', async t => {
   t.after(async () => { if (gateway) { await gateway.close(); gateway = null; } });
-  const create = id => {
-    const output = execFileSync(process.execPath, [path.join(__dirname, '../scripts/clients.cjs'), 'create', id, `Cliente ${id}`, `${id}@example.com`], { encoding: 'utf8', env: process.env });
+  const create = (id, flags) => {
+    const output = execFileSync(process.execPath, [path.join(__dirname, '../scripts/clients.cjs'), 'create', id, `Cliente ${id}`, `${id}@example.com`, ...flags], { encoding: 'utf8', env: process.env });
     return { token: output.match(/convite\/([a-f0-9]{64})/)[1], password: output.match(/Senha inicial: (\S+)/)[1], email: `${id}@example.com`, cookies: new Map() };
   };
-  const a = create('empresa-a');
-  const b = create('empresa-b');
+  const a = create('empresa-a', ['--days', '21']);
+  const b = create('empresa-b', ['--unlimited']);
   gateway = createGateway();
   await new Promise(resolve => gateway.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${gateway.server.address().port}`;
@@ -75,6 +109,10 @@ test('gateway real: convites, login, isolamento, sockets, expiração e revogaç
   assert.equal((await request(a, '/api/login', { email: a.email, password: a.password })).status, 200);
   assert.equal((await request(b, '/api/login', { email: a.email, password: a.password })).status, 401);
   assert.equal((await request(b, '/api/login', { email: b.email, password: b.password })).status, 200);
+  assert.equal(JSON.parse((await request(a, '/api/bootstrap')).body).trial.days, 21);
+  const unlimited = JSON.parse((await request(b, '/api/bootstrap')).body).trial;
+  assert.equal(unlimited.days, null);
+  assert.equal(unlimited.expiresAt, null);
   const started = trial.read('empresa-a').startedAt;
   await request(a, '/api/login', { email: a.email, password: a.password });
   assert.equal(trial.read('empresa-a').startedAt, started);
@@ -114,6 +152,13 @@ test('gateway real: convites, login, isolamento, sockets, expiração e revogaç
       await page.click('#logoutButton');
       await page.waitForSelector('#authForm');
       assert.equal(await page.evaluate(() => socket.connected), false);
+      await page.goto(base + '/convite/' + b.token, { waitUntil: 'networkidle0' });
+      assert.match(await page.$eval('.auth-brand', el => el.textContent), /sem expiração/);
+      await page.type('[name="email"]', b.email);
+      await page.type('[name="password"]', b.password);
+      await page.click('#authForm button[type="submit"]');
+      await page.waitForFunction(() => document.querySelector('#demoBanner')?.textContent.includes('sem prazo de expiração'));
+      assert.deepEqual(errors, []);
     } finally { await browser.close(); }
   }
   const ended = trial.read('empresa-a');

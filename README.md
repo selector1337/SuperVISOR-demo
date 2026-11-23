@@ -5,7 +5,7 @@ Versão independente da aplicação, preparada para `https://demo.supervisor.ums
 ## Funcionamento
 
 - Cada empresa recebe um convite privado, um administrador e uma senha inicial gerada automaticamente.
-- O teste começa no **primeiro login válido** e dura **168 horas (7 dias)**. Abrir o convite ou errar a senha não inicia a contagem.
+- O prazo é definido por empresa: **7 dias por padrão**, **21 dias** com `--days 21`, ou **sem expiração** com `--unlimited`. Abrir o convite ou errar a senha não inicia a contagem; os prazos definidos começam no **primeiro login válido**.
 - Todos os administradores criados dentro da empresa compartilham o mesmo prazo. Criar usuários, alterar e-mail/senha, limpar cookies e reiniciar o servidor não renovam a demo.
 - Ao vencer, o servidor bloqueia páginas, APIs e novas conexões. Interrompe os agendamentos e encerra o processo do cliente e o navegador do WhatsApp. Uma mensagem já entregue ao WhatsApp antes do vencimento não é desfeita.
 - A demo mantém contatos, conversas, agendamentos, estatísticas, histórico, administração de usuários e conexão por QR Code. O cliente conecta o próprio WhatsApp e as mensagens são reais.
@@ -163,6 +163,20 @@ cd /var/www/supervisor-demo
 npm run client -- create empresa-exemplo "Empresa Exemplo" responsavel@empresa.com.br
 ```
 
+Para uma demo de **21 dias**:
+
+```bash
+npm run client -- create empresa-21 "Empresa 21 dias" gestor@empresa.com.br --days 21
+```
+
+Para uma demo **sem prazo de expiração**:
+
+```bash
+npm run client -- create empresa-livre "Empresa sem prazo" gestor@outraempresa.com.br --unlimited
+```
+
+Essas modalidades usam o mesmo servidor, domínio e código, com dados isolados por empresa. Não precisa instalar versões separadas. Sem as opções, novos convites continuam com 7 dias. `--days` aceita números inteiros de 1 a 3650; não use zero para indicar acesso sem prazo.
+
 O comando imprime:
 
 ```text
@@ -185,7 +199,7 @@ npm run client -- create beta "Empresa Beta" gestor@beta.com.br
 
 Cada comando imprime um convite e uma senha diferentes. A Alfa usa `instances/alfa` e a Beta usa `instances/beta`. Elas não compartilham contatos, conversas, agendamentos, histórico, estatísticas, usuários ou sessão do WhatsApp. No mesmo navegador, abra o convite da empresa correspondente antes de entrar; para testar duas simultaneamente, use perfis de navegador separados.
 
-Para criar **mais pessoas na mesma empresa**, o administrador acessa a aba **Administradores** dentro do painel e cadastra os usuários. Todos entram pelo convite dessa empresa e usam suas próprias credenciais. Compartilham o ambiente, um único WhatsApp e o prazo de 7 dias da empresa. Não execute `create` novamente para cada colaborador.
+Para criar **mais pessoas na mesma empresa**, o administrador acessa a aba **Administradores** dentro do painel e cadastra os usuários. Todos entram pelo convite dessa empresa e usam suas próprias credenciais. Compartilham o ambiente, um único WhatsApp e o prazo definido para a empresa. Não execute `create` novamente para cada colaborador.
 
 O prazo começa no primeiro login válido de qualquer usuário dessa empresa. Depois de começar, ele não é reiniciado por novos administradores ou novos logins. A empresa continua sem acesso após vencer; as rotas de gUMperformance também não existem nesta edição.
 
@@ -195,13 +209,28 @@ Listar clientes e prazos:
 npm run client -- list
 ```
 
-Revogar antes dos 7 dias:
+Revogar a qualquer momento, inclusive uma demo sem expiração:
 
 ```bash
 npm run client -- revoke empresa-exemplo
 ```
 
 A revogação bloqueia novas requisições imediatamente e inicia o encerramento do processo em até 1 segundo. O fechamento do Chromium pode levar alguns segundos.
+
+### Alterar o prazo de uma empresa existente
+
+```bash
+npm run client -- set-duration empresa-exemplo --days 21
+npm run client -- set-duration empresa-exemplo --unlimited
+```
+
+Execute **um** dos comandos, conforme a modalidade desejada. A alteração mantém os dados, usuários, senha, convite e a data do primeiro login. O prazo de 21 dias é contado a partir do primeiro login original: se a empresa começou há 5 dias, restam 16 dias. Se ainda não começou, a contagem continua aguardando o primeiro login. Se o novo prazo já tiver terminado, o ambiente permanece expirado. Tornar uma demo expirada ilimitada permite acesso novamente, desde que não tenha sido revogada manualmente. Alterar prazo não desfaz revogação manual.
+
+Após a alteração, recarregue o painel para atualizar a indicação do prazo. Não é necessário reiniciar o PM2 para mudar uma empresa. O comando de listagem mostra o prazo e o vencimento. Demos antigas sem o novo campo de duração preservam o comportamento original de 7 dias.
+
+### Instalar esta atualização no servidor
+
+Primeiro envie o código atualizado da pasta `demo` ao repositório GitHub da demo. Não envie `.env` ou `instances`. Depois use o procedimento de backup e atualização na seção abaixo. O processo é `supervisor-demo`; a instalação principal do SuperVISOR não precisa ser atualizada. Só execute as novas opções de prazo depois de instalar esta atualização. A configuração do Nginx e o domínio continuam os mesmos.
 
 ### 7. Conferir a publicação
 
@@ -239,7 +268,7 @@ pm2 save
 
 Se qualquer comando falhar, corrija a causa antes de prosseguir. A pasta `instances` estará vazia se ainda não houver empresas. Não use `pm2 stop all`, `pm2 delete all`, `git clean -fdx` ou substitua a pasta inteira: isso pode interromper a produção ou apagar dados das demos. Alterações em `deploy/nginx.conf` precisam ser aplicadas separadamente à configuração instalada; se o Certbot já adicionou HTTPS, preserve os blocos de certificado ao editar o arquivo do Nginx.
 
-As sessões de login ficam em memória; reinícios exigem novo login, sem renovar os 7 dias. A sessão do WhatsApp e o prazo ficam em disco. O cliente precisa voltar a acessar o ambiente para que seu processo seja aberto após o reinício.
+As sessões de login ficam em memória; reinícios exigem novo login, sem renovar o prazo definido. A sessão do WhatsApp e a modalidade de prazo ficam em disco. O cliente precisa voltar a acessar o ambiente para que seu processo seja aberto após o reinício.
 
 Estrutura por empresa:
 

@@ -1,7 +1,7 @@
 {
   "name": "supervisor-demo",
-  "version": "1.2.6-demo.1",
-  "description": "SuperVISOR Demo: ambientes isolados com teste de 7 dias, sem integrações.",
+  "version": "1.2.6-demo.2",
+  "description": "SuperVISOR Demo: ambientes isolados com prazo por empresa ou sem expiração, sem integrações.",
   "main": "src/gateway.js",
   "type": "commonjs",
   "scripts": {
