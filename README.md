@@ -285,6 +285,47 @@ O vencimento preserva os dados para análise posterior e eventual migração ass
 
 ## Testes locais
 
+### QR Code com erro `Cannot read properties of null (reading 'Socket')`
+
+A edição `1.2.6-demo.3` adapta a demo à nova tela `/login/` do WhatsApp Web. Essa tela exibe o QR, mas não possui o módulo Socket esperado pela biblioteca. O problema foi [relatado no projeto oficial em 23/11/2026](https://github.com/wwebjs/whatsapp-web.js/issues/201988). Apenas aumentar o tempo de espera ou atualizar a biblioteca não resolve essa mudança.
+
+O adaptador em `src/whatsapp-client.js` acompanha o QR nativo na nova tela, atualiza sua imagem no painel e entrega a conexão de volta à biblioteca oficial quando a página autenticada é carregada. A demo fixa `whatsapp-web.js` em `1.34.8` e Puppeteer em `24.38.0`, busca a página atual sem cache HTML antigo e ignora erros/eventos de clientes encerrados durante reconexões. O teste real em sessão temporária confirmou a geração do QR; leitura pelo celular e operações com uma conta vinculada precisam ser verificadas no seu servidor.
+
+Envie os arquivos atualizados para o GitHub e siga a seção de atualização com backup acima. Depois de `npm ci`, confira:
+
+```bash
+cd /var/www/supervisor-demo
+node -p "require('whatsapp-web.js/package.json').version"
+node -p "require('puppeteer/package.json').version"
+```
+
+As versões devem ser `1.34.8` e `24.38.0`. O `npm ci` usa o lockfile; apenas reiniciar o PM2 ou clicar em gerar QR não atualiza a biblioteca. O Chrome compatível é instalado por `npm ci`; para repetir somente a instalação do navegador:
+
+```bash
+export PUPPETEER_CACHE_DIR="$PWD/.cache/puppeteer"
+npm run browser:install
+```
+
+Para testar a geração do QR sem mexer no WhatsApp de nenhum cliente, execute como o usuário de serviço:
+
+```bash
+export PUPPETEER_CACHE_DIR="$PWD/.cache/puppeteer"
+npm run check:whatsapp
+```
+
+Esse diagnóstico cria uma sessão temporária, informa as versões, aguarda até 150 segundos e encerra o Chrome ao gerar o QR. Não imprime o QR, não vincula conta, não envia mensagens e não altera `instances` das empresas. A pasta temporária é removida ao concluir. O servidor precisa alcançar `https://web.whatsapp.com`.
+
+Depois de atualizar e reiniciar `supervisor-demo`, abra o convite da empresa e aguarde o QR. Se ainda falhar, colete:
+
+```bash
+pm2 logs supervisor-demo --lines 100 --nostream
+tail -n 100 /var/www/supervisor-demo/instances/IDENTIFICADOR/whatsapp-debug.log
+```
+
+Substitua `IDENTIFICADOR` pelo ID listado em `npm run client -- list`, não pelo nome exibido no painel. Não apague `instances`, `trial.json`, `data` ou `.wwebjs_auth` para tentar resolver esse erro de biblioteca. O comando "Gerar novo QR" do painel limpa a autenticação somente da empresa acessada e exige nova vinculação.
+
+### Suíte automatizada
+
 ```bash
 npm test
 ```

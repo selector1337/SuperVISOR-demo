@@ -1,6 +1,6 @@
 {
   "name": "supervisor-demo",
-  "version": "1.2.6-demo.2",
+  "version": "1.2.6-demo.3",
   "description": "SuperVISOR Demo: ambientes isolados com prazo por empresa ou sem expiração, sem integrações.",
   "main": "src/gateway.js",
   "type": "commonjs",
@@ -10,6 +10,7 @@
     "start": "node src/gateway.js",
     "dev": "node src/gateway.js",
     "client": "node scripts/clients.cjs",
+    "check:whatsapp": "node scripts/check-whatsapp.cjs",
     "test": "node --test tests/*.test.cjs",
     "pm2:start": "pm2 startOrReload ecosystem.config.cjs --update-env"
   },
@@ -19,10 +20,10 @@
     "express-session": "^1.18.0",
     "ffmpeg-static": "^5.3.0",
     "mongodb": "^6.12.0",
-    "puppeteer": "^23.11.1",
+    "puppeteer": "24.38.0",
     "qrcode": "^1.5.3",
     "socket.io": "^4.7.5",
     "uuid": "^9.0.1",
-    "whatsapp-web.js": "^1.25.0"
+    "whatsapp-web.js": "1.34.8"
   }
 }

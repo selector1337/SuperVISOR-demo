@@ -73,7 +73,7 @@ let state = {
 
 const changelog = [
   {
-    version: '1.2.6-demo.2',
+    version: '1.2.6-demo.3',
     title: 'Demonstração com prazo por empresa',
     items: [
       'Acesso por convite com ambiente e WhatsApp próprios para cada empresa.',
